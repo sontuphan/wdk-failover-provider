@@ -1,5 +1,5 @@
 {
-  "name": "wdk-failover-provider",
+  "name": "@tetherto/wdk-failover-provider",
   "version": "1.0.0",
   "description": "Zero-dependency failover mechanism for seamless fallback when providers break",
   "homepage": "https://github.com/tetherto/wdk-failover-provider#readme",
@@ -15,14 +15,31 @@
   "type": "module",
   "main": "src/index.js",
   "types": "./types",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./package": {
+      "default": "./package.json"
+    }
+  },
   "scripts": {
     "build:types": "tsc",
+    "build:test": "tsup-node tests --clean --silent --format esm --out-dir dist/tests",
     "lint": "standard",
     "lint:fix": "standard --fix",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "noba --register tsx ./tests/*.test.ts",
+    "test:node": "npm run build:test && noba ./dist/tests/*.test.js",
+    "test:bare": "npm run build:test && noba-bare ./dist/tests/*.test.js"
   },
   "devDependencies": {
+    "bare-node-runtime": "^1.1.4",
+    "ethers": "^6.16.0",
+    "noba": "^1.6.4",
     "standard": "^17.1.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "publishConfig": {

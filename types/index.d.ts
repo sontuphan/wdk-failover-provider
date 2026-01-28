@@ -10,10 +10,10 @@
  */
 /**
  * @class
- * @template {Object} T
+ * @template {{}} T Because limitation of jsdoc, we use `T extends {}` instead of `T extends object`.
  * @type {FailoverProvider<T>} The failover factory
  */
-export default class FailoverProvider<T extends unknown> {
+export default class FailoverProvider<T extends {}> {
     /**
      * @param {FailoverProviderConfig} config - The failover factory config.
      */
@@ -44,19 +44,18 @@ export default class FailoverProvider<T extends unknown> {
      * The FailoverProvider factory
      * @returns The instance of FailoverProvider
      */
-    initialize: () => any;
+    initialize: () => T;
     /**
      * Switch to the next candidate provider by round robin
      * @private
      * @returns The new candidate provider
      */
     private _switch;
-    activeProvider: any;
     /**
      * Store the response time of the latest request
      * @private
      * @param {ProviderProxy<T>} target - The provider proxy
-     * @returns The benchmark close
+     * @returns The benchmark close function
      */
     private _benchmark;
     /**
