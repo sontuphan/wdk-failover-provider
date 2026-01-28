@@ -1,0 +1,38 @@
+{
+  "name": "wdk-failover-provider",
+  "version": "1.0.0",
+  "description": "Zero-dependency failover mechanism for seamless fallback when providers break",
+  "homepage": "https://github.com/tetherto/wdk-failover-provider#readme",
+  "bugs": {
+    "url": "https://github.com/tetherto/wdk-failover-provider/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tetherto/wdk-failover-provider.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Tetherto",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "./types",
+  "scripts": {
+    "build:types": "tsc",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "standard": "^17.1.2",
+    "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "standard": {
+    "ignore": [
+      "bare.js",
+      "tests/**/*.js"
+    ]
+  }
+}
