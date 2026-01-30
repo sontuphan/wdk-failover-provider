@@ -31,7 +31,8 @@
     "lint:fix": "standard --fix",
     "test": "noba --register tsx ./tests/*.test.ts",
     "test:node": "npm run build:test && noba ./dist/tests/*.test.js",
-    "test:bare": "npm run build:test && noba-bare ./dist/tests/*.test.js"
+    "test:bare": "npm run build:test && noba-bare ./dist/tests/*.test.js",
+    "prepublish": "npm run build:types"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
