@@ -13,7 +13,7 @@ class Animal {
   }
 }
 
-describe('Mocked providers', ({ test }) => {
+describe('Mocked providers', ({ describe, test }) => {
   class Cat extends Animal {
     constructor() {
       super('meow')
@@ -68,5 +68,37 @@ describe('Mocked providers', ({ test }) => {
     expect(async () => {
       await animal.speak()
     }).rejects("doesn't speak")
+  })
+
+  describe('shouldRetryOn config', ({ test }) => {
+    test('should not retry on custom shouldRetryOn', async ({ expect }) => {
+      const animal = new FailoverProvider<Animal>({
+        shouldRetryOn: (error) => {
+          if (error instanceof Error) {
+            return !/cockroach/.test(error.message)
+          }
+          return true
+        },
+      })
+        .addProvider(new Cockroach())
+        .addProvider(new Cat())
+        .addProvider(new Dog())
+        .initialize()
+
+      expect(async () => {
+        await animal.speak()
+      }).rejects("doesn't speak")
+    })
+
+    test('should retry on the default shouldRetryOn', async ({ expect }) => {
+      const animal = new FailoverProvider<Animal>()
+        .addProvider(new Cockroach())
+        .addProvider(new Cat())
+        .addProvider(new Dog())
+        .initialize()
+
+      const spoken = await animal.speak()
+      expect(spoken).to.be('meow')
+    })
   })
 })

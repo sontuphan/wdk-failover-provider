@@ -3,9 +3,10 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 import { shims } from './config'
 import type { AbstractProvider } from 'ethers'
 
-const { JsonRpcProvider, BrowserProvider } = await import('ethers', {
-  with: shims,
-})
+const { JsonRpcProvider, BrowserProvider, parseEther, Wallet, ZeroAddress } =
+  await import('ethers', {
+    with: shims,
+  })
 
 const window = {
   ethereum: {
@@ -21,15 +22,14 @@ const window = {
   },
 }
 
-describe('Ethereum providers', ({ test }) => {
+const RPC_PROVIDER =
+  'https://mainnet.infura.io/v3/06da09cda4da458c9aafe71cf464f5e5'
+
+describe('Ethereum providers', ({ describe, test }) => {
   test('should accept polymorphism', async ({ expect }) => {
     const provider = new FailoverProvider<AbstractProvider>()
       .addProvider(new BrowserProvider(window.ethereum))
-      .addProvider(
-        new JsonRpcProvider(
-          'https://mainnet.infura.io/v3/06da09cda4da458c9aafe71cf464f5e5',
-        ),
-      )
+      .addProvider(new JsonRpcProvider(RPC_PROVIDER))
       .initialize()
 
     const blockNumber = await provider.getBlockNumber()
@@ -42,18 +42,72 @@ describe('Ethereum providers', ({ test }) => {
       .addProvider(new BrowserProvider(window.ethereum))
       .addProvider(new BrowserProvider(window.ethereum))
       .addProvider(
-        new JsonRpcProvider(
-          'https://mainnet.infura.io/v3/06da09cda4da458c9aafe71cf464f5e5',
-          {
-            name: 'mainnet',
-            chainId: 1,
-          },
-        ),
+        new JsonRpcProvider(RPC_PROVIDER, {
+          name: 'mainnet',
+          chainId: 1,
+        }),
       )
       .initialize()
 
     const blockNumber = await provider.getBlockNumber()
 
     expect(blockNumber > 0).to.be(true)
+  })
+
+  describe('shouldRetryOn config', ({ test }) => {
+    test('should not retry on insufficient balance error', async ({
+      expect,
+    }) => {
+      const provider = new FailoverProvider<AbstractProvider>({
+        shouldRetryOn: (error) => {
+          if (error instanceof Error && 'code' in error) {
+            return error.code !== 'INSUFFICIENT_FUNDS'
+          }
+          return true
+        },
+      })
+        .addProvider(
+          new JsonRpcProvider(RPC_PROVIDER, {
+            name: 'mainnet',
+            chainId: 1,
+          }),
+        )
+        .addProvider(new BrowserProvider(window.ethereum))
+        .initialize()
+
+      const wallet = Wallet.createRandom(provider)
+
+      expect(async () => {
+        await wallet.sendTransaction({
+          to: ZeroAddress,
+          value: parseEther('1'),
+        })
+      }).rejects(/insufficient funds/)
+    })
+
+    test('should be failed on the default shouldRetryOn', async ({
+      expect,
+    }) => {
+      const provider = new FailoverProvider<AbstractProvider>({
+        retries: 1,
+      })
+        .addProvider(
+          new JsonRpcProvider(RPC_PROVIDER, {
+            name: 'mainnet',
+            chainId: 1,
+          }),
+        )
+        .addProvider(new BrowserProvider(window.ethereum))
+        .initialize()
+
+      const wallet = Wallet.createRandom(provider)
+
+      expect(async () => {
+        await wallet.sendTransaction({
+          to: ZeroAddress,
+          value: parseEther('1'),
+        })
+      }).rejects(/missing revert data/)
+    })
   })
 })

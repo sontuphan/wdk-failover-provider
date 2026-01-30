@@ -1,6 +1,7 @@
 /**
  * @typedef {Object} FailoverProviderConfig
  * @property {number} [retries] - The number of retries in the failover mechanism.
+ * @property {(error: unknown) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
  */
 
 /**
@@ -32,13 +33,23 @@ export default class FailoverProvider {
    * @private
    * @type {number} The number of retries before the failover provider throws an error.
    */
-  _retries = 3
+  _retries
+
+  /**
+   * @private
+   * @type {(error: unknown) => boolean} Define errors that the failover provider should retry.
+   */
+  _shouldRetryOn
 
   /**
    * @param {FailoverProviderConfig} config - The failover factory config.
    */
-  constructor({ retries = 3 } = {}) {
+  constructor({
+    retries = 3,
+    shouldRetryOn = (error) => error instanceof Error,
+  } = {}) {
     this._retries = retries
+    this._shouldRetryOn = shouldRetryOn
   }
 
   /**
@@ -127,7 +138,7 @@ export default class FailoverProvider {
         }
       } catch (er) {
         record()
-        if (retries <= 0) throw er
+        if (retries <= 0 || !this._shouldRetryOn(er)) throw er
         return this.proxy(this._switch(), p, receiver, retries - 1)
       }
 
@@ -144,7 +155,7 @@ export default class FailoverProvider {
         )
         .catch((er) => {
           record()
-          if (retries <= 0) throw er
+          if (retries <= 0 || !this._shouldRetryOn(er)) throw er
           return this.proxy(this._switch(), p, receiver, retries - 1)(...args)
         })
     }

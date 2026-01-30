@@ -1,6 +1,7 @@
 /**
  * @typedef {Object} FailoverProviderConfig
  * @property {number} [retries] - The number of retries in the failover mechanism.
+ * @property {(error: unknown) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
  */
 /**
  * @template T
@@ -17,7 +18,7 @@ export default class FailoverProvider<T extends {}> {
     /**
      * @param {FailoverProviderConfig} config - The failover factory config.
      */
-    constructor({ retries }?: FailoverProviderConfig);
+    constructor({ retries, shouldRetryOn, }?: FailoverProviderConfig);
     /**
      * @private
      * @type {number} The current active provider index.
@@ -33,6 +34,11 @@ export default class FailoverProvider<T extends {}> {
      * @type {number} The number of retries before the failover provider throws an error.
      */
     private _retries;
+    /**
+     * @private
+     * @type {(error: unknown) => boolean} Define errors that the failover provider should retry.
+     */
+    private _shouldRetryOn;
     /**
      * Add a provider into the list of candidates
      * @template {T} P
@@ -74,6 +80,10 @@ export type FailoverProviderConfig = {
      * - The number of retries in the failover mechanism.
      */
     retries?: number;
+    /**
+     * - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
+     */
+    shouldRetryOn?: (error: unknown) => boolean;
 };
 /**
  * <T>
