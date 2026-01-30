@@ -4,8 +4,6 @@ Zero-dependency failover mechanism for seamless fallback when providers break.
 
 ## Install
 
-Install from npm:
-
 ```bash
 npm install @tetherto/wdk-failover-provider
 ```
