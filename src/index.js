@@ -44,9 +44,9 @@ export default class FailoverProvider {
   /**
    * @param {FailoverProviderConfig} config - The failover factory config.
    */
-  constructor({
+  constructor ({
     retries = 3,
-    shouldRetryOn = (error) => error instanceof Error,
+    shouldRetryOn = (error) => error instanceof Error
   } = {}) {
     this._retries = retries
     this._shouldRetryOn = shouldRetryOn
@@ -68,17 +68,18 @@ export default class FailoverProvider {
    * @returns The instance of FailoverProvider
    */
   initialize = () => {
-    if (!this._providers.length)
+    if (!this._providers.length) {
       throw new Error(
-        'Cannot initialize an empty provider. Call `addProvider` before this function.',
+        'Cannot initialize an empty provider. Call `addProvider` before this function.'
       )
+    }
 
     const [{ provider }] = this._providers
 
     return new Proxy(provider, {
       get: (_, p, receiver) => {
         return this.proxy(this._providers[this._activeProvider], p, receiver)
-      },
+      }
     })
   }
 
@@ -151,7 +152,7 @@ export default class FailoverProvider {
           (re) => {
             record()
             return re
-          },
+          }
         )
         .catch((er) => {
           record()
