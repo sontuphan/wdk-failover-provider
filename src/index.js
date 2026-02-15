@@ -44,9 +44,9 @@ export default class FailoverProvider {
   /**
    * @param {FailoverProviderConfig} config - The failover factory config.
    */
-  constructor({
+  constructor ({
     retries = 3,
-    shouldRetryOn = (error) => error instanceof Error,
+    shouldRetryOn = (error) => error instanceof Error
   } = {}) {
     this._retries = retries
     this._shouldRetryOn = shouldRetryOn
@@ -68,17 +68,18 @@ export default class FailoverProvider {
    * @returns The instance of FailoverProvider
    */
   initialize = () => {
-    if (!this._providers.length)
+    if (!this._providers.length) {
       throw new Error(
-        'Cannot initialize an empty provider. Call `addProvider` before this function.',
+        'Cannot initialize an empty provider. Call `addProvider` before this function.'
       )
+    }
 
     const [{ provider }] = this._providers
 
     return new Proxy(provider, {
       get: (_, p, receiver) => {
-        return this.proxy(this._providers[this._activeProvider], p, receiver)
-      },
+        return this._proxy(this._providers[this._activeProvider], p, receiver)
+      }
     })
   }
 
@@ -114,13 +115,18 @@ export default class FailoverProvider {
    * @param {number} retries The number of retries
    * @returns
    */
-  proxy = (target, p, receiver, retries = this._retries) => {
+  _proxy = (target, p, receiver, retries = this._retries) => {
+    // Immediately return if the property is not a function
+    const prop = Reflect.get(target.provider, p, receiver)
+    if (typeof prop !== 'function') return prop
+
     /**
      * @param {...any} args
      * @returns {any}
      */
     return (...args) => {
       const record = this._benchmark(target)
+
       /**
        * @type {any | Promise<any>}
        */
@@ -128,9 +134,6 @@ export default class FailoverProvider {
 
       // Retry on sync functions
       try {
-        const prop = Reflect.get(target.provider, p, receiver)
-        if (typeof prop !== 'function') return prop
-
         re = prop.apply(target.provider, args)
         if (!re?.then) {
           record()
@@ -139,7 +142,7 @@ export default class FailoverProvider {
       } catch (er) {
         record()
         if (retries <= 0 || !this._shouldRetryOn(er)) throw er
-        return this.proxy(this._switch(), p, receiver, retries - 1)
+        return this._proxy(this._switch(), p, receiver, retries - 1)
       }
 
       // Retry on async functions
@@ -151,12 +154,12 @@ export default class FailoverProvider {
           (re) => {
             record()
             return re
-          },
+          }
         )
         .catch((er) => {
           record()
           if (retries <= 0 || !this._shouldRetryOn(er)) throw er
-          return this.proxy(this._switch(), p, receiver, retries - 1)(...args)
+          return this._proxy(this._switch(), p, receiver, retries - 1)(...args)
         })
     }
   }

@@ -1,104 +1,104 @@
-import { describe } from 'noba'
-import FailoverProvider from '@tetherto/wdk-failover-provider'
+import { describe } from "noba";
+import FailoverProvider from "@tetherto/wdk-failover-provider";
 
 class Animal {
   constructor(
-    public readonly sound: string = '...',
+    public readonly sound: string = "...",
     public readonly pace: number = 300,
   ) {}
 
   speak = async () => {
-    await new Promise((r) => setTimeout(r, this.pace))
-    return this.sound
-  }
+    await new Promise((r) => setTimeout(r, this.pace));
+    return this.sound;
+  };
 }
 
-describe('Mocked providers', ({ describe, test }) => {
+describe("Mocked providers", ({ describe, test }) => {
   class Cat extends Animal {
     constructor() {
-      super('meow')
+      super("meow");
     }
   }
 
   class Dog extends Animal {
     constructor() {
-      super('woof')
+      super("woof");
     }
   }
 
   class Cockroach extends Animal {
     constructor() {
-      super()
+      super();
     }
 
     speak = async () => {
-      throw new Error("A cockroach doesn't speak, it flies")
-    }
+      throw new Error("A cockroach doesn't speak, it flies");
+    };
   }
 
-  test('should accept polymorphism', async ({ expect }) => {
+  test("should accept polymorphism", async ({ expect }) => {
     const animal = new FailoverProvider<Animal>()
       .addProvider(new Cat())
       .addProvider(new Dog())
-      .initialize()
+      .initialize();
 
-    const spoke = await animal.speak()
-    expect(spoke).to.be('meow')
-  })
+    const spoke = await animal.speak();
+    expect(spoke).to.be("meow");
+  });
 
-  test('should switch provider', async ({ expect }) => {
+  test("should switch provider", async ({ expect }) => {
     const animal = new FailoverProvider<Animal>()
       .addProvider(new Cockroach())
       .addProvider(new Dog())
       .addProvider(new Cat())
-      .initialize()
+      .initialize();
 
-    const spoke = await animal.speak()
-    expect(spoke).to.be('woof')
-  })
+    const spoke = await animal.speak();
+    expect(spoke).to.be("woof");
+  });
 
-  test('should retry 1 times and fail', async ({ log, expect }) => {
+  test("should retry 1 times and fail", async ({ expect }) => {
     const animal = new FailoverProvider<Animal>({ retries: 1 })
       .addProvider(new Cockroach())
       .addProvider(new Cockroach())
       .addProvider(new Cat())
       .addProvider(new Dog())
-      .initialize()
+      .initialize();
 
     expect(async () => {
-      await animal.speak()
-    }).rejects("doesn't speak")
-  })
+      await animal.speak();
+    }).rejects("doesn't speak");
+  });
 
-  describe('shouldRetryOn config', ({ test }) => {
-    test('should not retry on custom shouldRetryOn', async ({ expect }) => {
+  describe("shouldRetryOn config", ({ test }) => {
+    test("should not retry on custom shouldRetryOn", async ({ expect }) => {
       const animal = new FailoverProvider<Animal>({
         shouldRetryOn: (error) => {
           if (error instanceof Error) {
-            return !/cockroach/.test(error.message)
+            return !/cockroach/.test(error.message);
           }
-          return true
+          return true;
         },
       })
         .addProvider(new Cockroach())
         .addProvider(new Cat())
         .addProvider(new Dog())
-        .initialize()
+        .initialize();
 
       expect(async () => {
-        await animal.speak()
-      }).rejects("doesn't speak")
-    })
+        await animal.speak();
+      }).rejects("doesn't speak");
+    });
 
-    test('should retry on the default shouldRetryOn', async ({ expect }) => {
+    test("should retry on the default shouldRetryOn", async ({ expect }) => {
       const animal = new FailoverProvider<Animal>()
         .addProvider(new Cockroach())
         .addProvider(new Cat())
         .addProvider(new Dog())
-        .initialize()
+        .initialize();
 
-      const spoken = await animal.speak()
-      expect(spoken).to.be('meow')
-    })
-  })
-})
+      const spoken = await animal.speak();
+      expect(spoken).to.be("meow");
+    });
+  });
+});

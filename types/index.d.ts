@@ -18,7 +18,7 @@ export default class FailoverProvider<T extends {}> {
     /**
      * @param {FailoverProviderConfig} config - The failover factory config.
      */
-    constructor({ retries, shouldRetryOn, }?: FailoverProviderConfig);
+    constructor({ retries, shouldRetryOn }?: FailoverProviderConfig);
     /**
      * @private
      * @type {number} The current active provider index.
@@ -73,7 +73,7 @@ export default class FailoverProvider<T extends {}> {
      * @param {number} retries The number of retries
      * @returns
      */
-    private proxy;
+    private _proxy;
 }
 export type FailoverProviderConfig = {
     /**

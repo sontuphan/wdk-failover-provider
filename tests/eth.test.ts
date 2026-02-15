@@ -1,91 +1,91 @@
-import { describe } from 'noba'
-import FailoverProvider from '@tetherto/wdk-failover-provider'
-import { shims } from './config'
-import type { AbstractProvider } from 'ethers'
+import { describe } from "noba";
+import FailoverProvider from "@tetherto/wdk-failover-provider";
+import { shims } from "./config";
+import type { AbstractProvider } from "ethers";
 
 const { JsonRpcProvider, BrowserProvider, parseEther, Wallet, ZeroAddress } =
-  await import('ethers', {
+  await import("ethers", {
     with: shims,
-  })
+  });
 
 const window = {
   ethereum: {
     request: async ({
       method,
     }: {
-      method: string
-      params?: unknown[] | object
+      method: string;
+      params?: unknown[] | object;
     }) => {
-      if (method === 'eth_chainId') return 1
-      throw new Error('Provider disconnected')
+      if (method === "eth_chainId") return 1;
+      throw new Error("Provider disconnected");
     },
   },
-}
+};
 
 const RPC_PROVIDER =
-  'https://mainnet.infura.io/v3/06da09cda4da458c9aafe71cf464f5e5'
+  "https://mainnet.infura.io/v3/06da09cda4da458c9aafe71cf464f5e5";
 
-describe('Ethereum providers', ({ describe, test }) => {
-  test('should accept polymorphism', async ({ expect }) => {
+describe("Ethereum providers", ({ describe, test }) => {
+  test("should accept polymorphism", async ({ expect }) => {
     const provider = new FailoverProvider<AbstractProvider>()
       .addProvider(new BrowserProvider(window.ethereum))
       .addProvider(new JsonRpcProvider(RPC_PROVIDER))
-      .initialize()
+      .initialize();
 
-    const blockNumber = await provider.getBlockNumber()
+    const blockNumber = await provider.getBlockNumber();
 
-    expect(blockNumber > 0).to.be(true)
-  })
+    expect(blockNumber > 0).to.be(true);
+  });
 
-  test('should retry 1 time and fail', async ({ expect }) => {
+  test("should retry 1 time and fail", async ({ expect }) => {
     const provider = new FailoverProvider<AbstractProvider>()
       .addProvider(new BrowserProvider(window.ethereum))
       .addProvider(new BrowserProvider(window.ethereum))
       .addProvider(
         new JsonRpcProvider(RPC_PROVIDER, {
-          name: 'mainnet',
+          name: "mainnet",
           chainId: 1,
         }),
       )
-      .initialize()
+      .initialize();
 
-    const blockNumber = await provider.getBlockNumber()
+    const blockNumber = await provider.getBlockNumber();
 
-    expect(blockNumber > 0).to.be(true)
-  })
+    expect(blockNumber > 0).to.be(true);
+  });
 
-  describe('shouldRetryOn config', ({ test }) => {
-    test('should not retry on insufficient balance error', async ({
+  describe("shouldRetryOn config", ({ test }) => {
+    test("should not retry on insufficient balance error", async ({
       expect,
     }) => {
       const provider = new FailoverProvider<AbstractProvider>({
         shouldRetryOn: (error) => {
-          if (error instanceof Error && 'code' in error) {
-            return error.code !== 'INSUFFICIENT_FUNDS'
+          if (error instanceof Error && "code" in error) {
+            return error.code !== "INSUFFICIENT_FUNDS";
           }
-          return true
+          return true;
         },
       })
         .addProvider(
           new JsonRpcProvider(RPC_PROVIDER, {
-            name: 'mainnet',
+            name: "mainnet",
             chainId: 1,
           }),
         )
         .addProvider(new BrowserProvider(window.ethereum))
-        .initialize()
+        .initialize();
 
-      const wallet = Wallet.createRandom(provider)
+      const wallet = Wallet.createRandom(provider);
 
       expect(async () => {
         await wallet.sendTransaction({
           to: ZeroAddress,
-          value: parseEther('1'),
-        })
-      }).rejects(/insufficient funds/)
-    })
+          value: parseEther("1"),
+        });
+      }).rejects(/insufficient funds/);
+    });
 
-    test('should be failed on the default shouldRetryOn', async ({
+    test("should be failed on the default shouldRetryOn", async ({
       expect,
     }) => {
       const provider = new FailoverProvider<AbstractProvider>({
@@ -93,21 +93,21 @@ describe('Ethereum providers', ({ describe, test }) => {
       })
         .addProvider(
           new JsonRpcProvider(RPC_PROVIDER, {
-            name: 'mainnet',
+            name: "mainnet",
             chainId: 1,
           }),
         )
         .addProvider(new BrowserProvider(window.ethereum))
-        .initialize()
+        .initialize();
 
-      const wallet = Wallet.createRandom(provider)
+      const wallet = Wallet.createRandom(provider);
 
       expect(async () => {
         await wallet.sendTransaction({
           to: ZeroAddress,
-          value: parseEther('1'),
-        })
-      }).rejects(/missing revert data/)
-    })
-  })
-})
+          value: parseEther("1"),
+        });
+      }).rejects(/missing revert data/);
+    });
+  });
+});

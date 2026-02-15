@@ -50,8 +50,7 @@
   },
   "standard": {
     "ignore": [
-      "bare.js",
-      "tests/**/*.js"
+      "bare.js"
     ]
   }
 }
