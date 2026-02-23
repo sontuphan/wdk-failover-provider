@@ -67,7 +67,7 @@ export default class FailoverProvider {
    * Add a provider into the list of candidates
    * @template {T} P
    * @param {P} provider Provider
-   * @returns The instance of FailoverProvider
+   * @returns {FailoverProvider} The instance of FailoverProvider
    */
   addProvider = (provider) => {
     this._providers.push({ provider, ms: 0 })
@@ -76,7 +76,8 @@ export default class FailoverProvider {
 
   /**
    * The FailoverProvider factory
-   * @returns The instance of FailoverProvider
+   * @returns {T} The instance of FailoverProvider
+   * @throws {Error} When no providers have been added via addProvider()
    */
   initialize = () => {
     if (!this._providers.length) {
@@ -97,7 +98,7 @@ export default class FailoverProvider {
   /**
    * Switch to the next candidate provider by round robin
    * @private
-   * @returns The new candidate provider
+   * @returns {ProviderProxy<T>} The new candidate provider
    */
   _switch = () => {
     this._activeProvider = (this._activeProvider + 1) % this._providers.length

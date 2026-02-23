@@ -43,18 +43,19 @@ export default class FailoverProvider<T extends {}> {
      * Add a provider into the list of candidates
      * @template {T} P
      * @param {P} provider Provider
-     * @returns The instance of FailoverProvider
+     * @returns {FailoverProvider} The instance of FailoverProvider
      */
-    addProvider: <P extends T>(provider: P) => this;
+    addProvider: <P extends T>(provider: P) => FailoverProvider<any>;
     /**
      * The FailoverProvider factory
-     * @returns The instance of FailoverProvider
+     * @returns {T} The instance of FailoverProvider
+     * @throws {Error} When no providers have been added via addProvider()
      */
     initialize: () => T;
     /**
      * Switch to the next candidate provider by round robin
      * @private
-     * @returns The new candidate provider
+     * @returns {ProviderProxy<T>} The new candidate provider
      */
     private _switch;
     /**
