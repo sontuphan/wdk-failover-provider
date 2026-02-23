@@ -35,7 +35,7 @@ const provider = new FailoverProvider<AbstractProvider>()
 This package exposes a single default export: the `FailoverProvider` factory.
 
 - `new FailoverProvider(config?)` — Create a factory.
-  - `config.retries` (number, default `3`): number of retry attempts before throwing the last error.
+  - `config.retries` (number, default `3`): number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
   - `config.shouldRetryOn` (function, default: `error => error instanceof Error`): predicate to determine whether to retry on a given error.
 
 - `instance.addProvider(provider)` — Add a provider candidate. `provider` can be any object (sync or async methods).
