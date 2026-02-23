@@ -1,6 +1,20 @@
+// Copyright 2024 Tether Operations Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 /**
  * @typedef {Object} FailoverProviderConfig
- * @property {number} [retries] - The number of retries in the failover mechanism.
+ * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
  * @property {(error: unknown) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
  */
 
@@ -44,10 +58,7 @@ export default class FailoverProvider {
   /**
    * @param {FailoverProviderConfig} config - The failover factory config.
    */
-  constructor ({
-    retries = 3,
-    shouldRetryOn = (error) => error instanceof Error
-  } = {}) {
+  constructor ({ retries = 3, shouldRetryOn = (error) => error instanceof Error } = {}) {
     this._retries = retries
     this._shouldRetryOn = shouldRetryOn
   }
@@ -97,7 +108,7 @@ export default class FailoverProvider {
    * Store the response time of the latest request
    * @private
    * @param {ProviderProxy<T>} target - The provider proxy
-   * @returns The benchmark close function
+   * @returns {() => void} The benchmark close function
    */
   _benchmark = (target) => {
     const start = Date.now()
@@ -110,10 +121,10 @@ export default class FailoverProvider {
    * Proxy handler will keep retry until a response or throw the latest error.
    * @private
    * @param {ProviderProxy<T>} target The current active provider
-   * @param {string | symbol} p The method name
+   * @param {string | symbol} p The method/property name
    * @param {any} receiver The JS Proxy
    * @param {number} retries The number of retries
-   * @returns
+   * @returns {(string extends keyof T ? T[keyof T & string] : any) | (symbol extends keyof T ? T[keyof T & symbol] : any) | ((...args: any[]) => any | Promise<any>)}
    */
   _proxy = (target, p, receiver, retries = this._retries) => {
     // Immediately return if the property is not a function
@@ -122,7 +133,7 @@ export default class FailoverProvider {
 
     /**
      * @param {...any} args
-     * @returns {any}
+     * @returns {any | Promise<any>}
      */
     return (...args) => {
       const record = this._benchmark(target)
@@ -142,7 +153,9 @@ export default class FailoverProvider {
       } catch (er) {
         record()
         if (retries <= 0 || !this._shouldRetryOn(er)) throw er
-        return this._proxy(this._switch(), p, receiver, retries - 1)
+        const property = this._proxy(this._switch(), p, receiver, retries - 1)
+        if (typeof property === 'function') return property.apply(this, args)
+        return property
       }
 
       // Retry on async functions
@@ -156,11 +169,18 @@ export default class FailoverProvider {
             return re
           }
         )
-        .catch((er) => {
-          record()
-          if (retries <= 0 || !this._shouldRetryOn(er)) throw er
-          return this._proxy(this._switch(), p, receiver, retries - 1)(...args)
-        })
+        .catch(
+          /**
+           * @param {unknown} er
+           */
+          (er) => {
+            record()
+            if (retries <= 0 || !this._shouldRetryOn(er)) throw er
+            const property = this._proxy(this._switch(), p, receiver, retries - 1)
+            if (typeof property === 'function') return property.apply(this, args)
+            return property
+          }
+        )
     }
   }
 }

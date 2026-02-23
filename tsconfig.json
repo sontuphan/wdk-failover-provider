@@ -5,6 +5,7 @@
     "moduleResolution": "nodenext",
     "types": ["node"],
     "allowJs": true,
+    "checkJs": true,
     "declaration": true,
     "emitDeclarationOnly": true,
     "skipLibCheck": true,

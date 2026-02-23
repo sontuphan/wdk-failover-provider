@@ -1,13 +1,13 @@
 /**
  * @typedef {Object} FailoverProviderConfig
- * @property {number} [retries] - The number of retries in the failover mechanism.
+ * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
  * @property {(error: unknown) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
  */
 /**
  * @template T
  * @typedef {Object} ProviderProxy<T>
  * @property {T} provider - The provider abstraction.
- * @property {number} ms - The last response duration, which is planned for quorum mechanism.
+ * @property {number} ms - The last response duration, for future provider ranking.
  */
 /**
  * @class
@@ -61,23 +61,23 @@ export default class FailoverProvider<T extends {}> {
      * Store the response time of the latest request
      * @private
      * @param {ProviderProxy<T>} target - The provider proxy
-     * @returns The benchmark close function
+     * @returns {() => void} The benchmark close function
      */
     private _benchmark;
     /**
      * Proxy handler will keep retry until a response or throw the latest error.
      * @private
      * @param {ProviderProxy<T>} target The current active provider
-     * @param {string | symbol} p The method name
+     * @param {string | symbol} p The method/property name
      * @param {any} receiver The JS Proxy
      * @param {number} retries The number of retries
-     * @returns
+     * @returns {(string extends keyof T ? T[keyof T & string] : any) | (symbol extends keyof T ? T[keyof T & symbol] : any) | ((...args: any[]) => any | Promise<any>)}
      */
     private _proxy;
 }
 export type FailoverProviderConfig = {
     /**
-     * - The number of retries in the failover mechanism.
+     * - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
      */
     retries?: number;
     /**
@@ -94,7 +94,7 @@ export type ProviderProxy<T> = {
      */
     provider: T;
     /**
-     * - The last response duration, which is planned for quorum mechanism.
+     * - The last response duration, for future provider ranking.
      */
     ms: number;
 };
