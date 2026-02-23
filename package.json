@@ -1,6 +1,6 @@
 {
   "name": "@tetherto/wdk-failover-provider",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "description": "Zero-dependency failover mechanism for seamless fallback when providers break",
   "homepage": "https://github.com/tetherto/wdk-failover-provider#readme",
   "bugs": {
