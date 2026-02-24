@@ -3,22 +3,25 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 
 class Animal {
   /**
-   * @type {string}
-   */
-  sound
-
-  /**
-   * @type {number}
-   */
-  pace
-
-  /**
    * @constructor
-   * @param {string} sound
-   * @param {number} pace
+   * @param {string} name
+   * @param {string} [sound]
+   * @param {number} [pace]
    */
-  constructor (sound = '...', pace = 300) {
+  constructor(name, sound = '...', pace = 300) {
+    /**
+     * @type {string}
+     */
+    this.name = name
+
+    /**
+     * @type {string}
+     */
     this.sound = sound
+
+    /**
+     * @type {number}
+     */
     this.pace = pace
   }
 
@@ -33,29 +36,47 @@ class Animal {
 }
 
 describe('Mocked providers', ({ describe }) => {
+  class Cat extends Animal {
+    constructor() {
+      super('Cat', 'meow')
+    }
+  }
+
+  class Dog extends Animal {
+    constructor() {
+      super('Dog', 'woof')
+    }
+  }
+
+  class Cockroach extends Animal {
+    constructor() {
+      super('Cockroach')
+    }
+
+    speak = async () => {
+      throw new Error("A cockroach doesn't speak, it flies")
+    }
+
+    syncSpeak = () => {
+      throw new Error("A cockroach doesn't speak, it flies")
+    }
+  }
+
+  describe('properties of providers', ({ test }) => {
+    test('should access the property', async ({ expect }) => {
+      /**
+       * @type {FailoverProvider<Animal>}
+       */
+      const animal = new FailoverProvider()
+        .addProvider(new Cat())
+        .addProvider(new Dog())
+        .initialize()
+
+      expect(animal.name).to.be('Cat')
+    })
+  })
+
   describe('sync providers', ({ describe, test }) => {
-    class Cat extends Animal {
-      constructor () {
-        super('meow')
-      }
-    }
-
-    class Dog extends Animal {
-      constructor () {
-        super('woof')
-      }
-    }
-
-    class Cockroach extends Animal {
-      constructor () {
-        super()
-      }
-
-      syncSpeak = () => {
-        throw new Error("A cockroach doesn't speak, it flies")
-      }
-    }
-
     test('should accept polymorphism', async ({ expect }) => {
       /**
        * @type {FailoverProvider<Animal>}
@@ -110,7 +131,7 @@ describe('Mocked providers', ({ describe }) => {
               return !/cockroach/.test(error.message)
             }
             return true
-          }
+          },
         })
           .addProvider(new Cockroach())
           .addProvider(new Cat())
@@ -139,28 +160,6 @@ describe('Mocked providers', ({ describe }) => {
   })
 
   describe('async providers', ({ describe, test }) => {
-    class Cat extends Animal {
-      constructor () {
-        super('meow')
-      }
-    }
-
-    class Dog extends Animal {
-      constructor () {
-        super('woof')
-      }
-    }
-
-    class Cockroach extends Animal {
-      constructor () {
-        super()
-      }
-
-      speak = async () => {
-        throw new Error("A cockroach doesn't speak, it flies")
-      }
-    }
-
     test('should accept polymorphism', async ({ expect }) => {
       /**
        * @type {FailoverProvider<Animal>}
@@ -215,7 +214,7 @@ describe('Mocked providers', ({ describe }) => {
               return !/cockroach/.test(error.message)
             }
             return true
-          }
+          },
         })
           .addProvider(new Cockroach())
           .addProvider(new Cat())
