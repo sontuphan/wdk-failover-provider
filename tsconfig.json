@@ -11,5 +11,5 @@
     "stripInternal": true,
     "outDir": "./types"
   },
-  "include": ["src/**/*.js", "src/**/*.js"]
+  "include": ["index.js", "src/**/*.js"]
 }
