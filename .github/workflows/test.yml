@@ -31,5 +31,3 @@ jobs:
         run: npm run test:node
       - name: Test in Bare
         run: npm run test:bare
-      
-      

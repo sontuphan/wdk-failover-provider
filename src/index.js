@@ -15,7 +15,7 @@
 /**
  * @typedef {Object} FailoverProviderConfig
  * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
- * @property {(error: unknown) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
+ * @property {(error: Error) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
  */
 
 /**
@@ -26,63 +26,69 @@
  */
 
 /**
- * @class
  * @template {{}} T Because limitation of jsdoc, we use `T extends {}` instead of `T extends object`.
- * @type {FailoverProvider<T>} The failover factory
  */
 export default class FailoverProvider {
   /**
-   * @private
-   * @type {number} The current active provider index.
+   * Creates a failover provider factory. Use addProvider() to register provider candidates, then call initialize() to construct the final failover-enabled provider instance.
+   *
+   * @param {FailoverProviderConfig} [config] - The failover factory config.
    */
-  _activeProvider = 0
-
-  /**
-   * @private
-   * @type {Array<ProviderProxy<T>>} The list of provider candidates.
-   */
-  _providers = []
-
-  /**
-   * @private
-   * @type {number} The number of retries before the failover provider throws an error.
-   */
-  _retries
-
-  /**
-   * @private
-   * @type {(error: unknown) => boolean} Define errors that the failover provider should retry.
-   */
-  _shouldRetryOn
-
-  /**
-   * @param {FailoverProviderConfig} config - The failover factory config.
-   */
-  constructor ({ retries = 3, shouldRetryOn = (error) => error instanceof Error } = {}) {
+  constructor({ retries = 3, shouldRetryOn = (error) => error instanceof Error } = {}) {
+    /**
+     * The number of retries before the failover provider throws an error.
+     *
+     * @private
+     * @type {FailoverProviderConfig["retries"]}
+     */
     this._retries = retries
+
+    /**
+     * Define errors that the failover provider should retry.
+     *
+     * @private
+     * @type {FailoverProviderConfig["shouldRetryOn"]}
+     */
     this._shouldRetryOn = shouldRetryOn
+
+    /**
+     * The current active provider index.
+     *
+     * @private
+     * @type {number}
+     */
+    this._activeProvider = 0
+
+    /**
+     * The list of provider candidates.
+     *
+     * @private
+     * @type {Array<ProviderProxy<T>>}
+     */
+    this._providers = []
   }
 
   /**
    * Add a provider into the list of candidates
-   * @template {T} P
-   * @param {P} provider Provider
-   * @returns {FailoverProvider} The instance of FailoverProvider
+   *
+   * @param {T} provider The candidate provider
+   * @returns {FailoverProvider<T>} The instance of FailoverProvider
    */
-  addProvider = (provider) => {
+  addProvider(provider) {
     this._providers.push({ provider, ms: 0 })
     return this
   }
 
   /**
-   * The FailoverProvider factory
-   * @returns {T} The instance of FailoverProvider
+   * Initialize the failover mechanism based on provider candidates.
+   *
+   * @returns {T} The failover-enabled provider instance
    * @throws {Error} When no providers have been added via addProvider()
    */
-  initialize = () => {
+  initialize() {
     if (!this._providers.length) {
       throw new Error(
-        'Cannot initialize an empty provider. Call `addProvider` before this function.'
+        'Cannot initialize an empty provider. Call `addProvider` before this function.',
       )
     }
 
@@ -91,27 +97,29 @@ export default class FailoverProvider {
     return new Proxy(provider, {
       get: (_, p, receiver) => {
         return this._proxy(this._providers[this._activeProvider], p, receiver)
-      }
+      },
     })
   }
 
   /**
-   * Switch to the next candidate provider by round robin
+   * Switch to the next candidate provider using round-robin selection
+   *
    * @private
    * @returns {ProviderProxy<T>} The new candidate provider
    */
-  _switch = () => {
+  _switch() {
     this._activeProvider = (this._activeProvider + 1) % this._providers.length
     return this._providers[this._activeProvider]
   }
 
   /**
    * Store the response time of the latest request
+   *
    * @private
    * @param {ProviderProxy<T>} target - The provider proxy
    * @returns {() => void} The benchmark close function
    */
-  _benchmark = (target) => {
+  _benchmark(target) {
     const start = Date.now()
     return () => {
       target.ms = Math.round(Date.now() - start)
@@ -120,14 +128,15 @@ export default class FailoverProvider {
 
   /**
    * Proxy handler will keep retry until a response or throw the latest error.
+   *
    * @private
    * @param {ProviderProxy<T>} target The current active provider
    * @param {string | symbol} p The method/property name
-   * @param {any} receiver The JS Proxy
+   * @param {unknown} receiver The JS Proxy
    * @param {number} retries The number of retries
    * @returns {(string extends keyof T ? T[keyof T & string] : any) | (symbol extends keyof T ? T[keyof T & symbol] : any) | ((...args: any[]) => any | Promise<any>)}
    */
-  _proxy = (target, p, receiver, retries = this._retries) => {
+  _proxy(target, p, receiver, retries = this._retries) {
     // Immediately return if the property is not a function
     const prop = Reflect.get(target.provider, p, receiver)
     if (typeof prop !== 'function') return prop
@@ -168,11 +177,11 @@ export default class FailoverProvider {
           (re) => {
             record()
             return re
-          }
+          },
         )
         .catch(
           /**
-           * @param {unknown} er
+           * @param {Error} er
            */
           (er) => {
             record()
@@ -180,7 +189,7 @@ export default class FailoverProvider {
             const property = this._proxy(this._switch(), p, receiver, retries - 1)
             if (typeof property === 'function') return property.apply(this, args)
             return property
-          }
+          },
         )
     }
   }

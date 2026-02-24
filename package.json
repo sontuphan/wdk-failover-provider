@@ -2,6 +2,11 @@
   "name": "@tetherto/wdk-failover-provider",
   "version": "1.0.0-beta.1",
   "description": "Zero-dependency failover mechanism for seamless fallback when providers break",
+  "keywords": [
+    "wdk",
+    "wallet",
+    "failover"
+  ],
   "homepage": "https://github.com/tetherto/wdk-failover-provider#readme",
   "bugs": {
     "url": "https://github.com/tetherto/wdk-failover-provider/issues"
@@ -11,7 +16,7 @@
     "url": "git+https://github.com/tetherto/wdk-failover-provider.git"
   },
   "license": "Apache-2.0",
-  "author": "Tetherto",
+  "author": "Tether",
   "type": "module",
   "main": "src/index.js",
   "types": "./types",
@@ -29,12 +34,11 @@
     "lint": "standard",
     "lint:fix": "standard --fix",
     "test": "npm run test:node",
+    "test:coverage": "noba --coverage ./tests/*.test.js",
     "test:node": "noba ./tests/*.test.js",
-    "test:bare": "noba-bare ./tests/*.test.js",
-    "prepublish": "npm run build:types"
+    "test:bare": "noba-bare ./tests/*.test.js"
   },
   "devDependencies": {
-    "@types/node": "^25.1.0",
     "bare-node-runtime": "^1.1.4",
     "ethers": "^6.16.0",
     "noba": "^1.6.4",

@@ -17,7 +17,6 @@ const window = {
   ethereum: {
     request:
       /**
-       *
        * @param {{method: string, params?: unknown[] | object}} params
        * @returns
        */

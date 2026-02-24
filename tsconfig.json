@@ -1,9 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "es2020",
-    "moduleResolution": "bundler",
-    "types": ["node"],
+    "target": "ES2015",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
     "allowJs": true,
     "checkJs": true,
     "declaration": true,
@@ -12,5 +11,5 @@
     "stripInternal": true,
     "outDir": "./types"
   },
-  "include": ["src/**/*.js"]
+  "include": ["src/**/*.js", "src/**/*.js"]
 }

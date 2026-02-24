@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} FailoverProviderConfig
  * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
- * @property {(error: unknown) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
+ * @property {(error: Error) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
  */
 /**
  * @template T
@@ -10,56 +10,67 @@
  * @property {number} ms - The last response duration, for future provider ranking.
  */
 /**
- * @class
  * @template {{}} T Because limitation of jsdoc, we use `T extends {}` instead of `T extends object`.
- * @type {FailoverProvider<T>} The failover factory
  */
 export default class FailoverProvider<T extends {}> {
     /**
-     * @param {FailoverProviderConfig} config - The failover factory config.
+     * Creates a failover provider factory. Use addProvider() to register provider candidates, then call initialize() to construct the final failover-enabled provider instance.
+     *
+     * @param {FailoverProviderConfig} [config] - The failover factory config.
      */
     constructor({ retries, shouldRetryOn }?: FailoverProviderConfig);
     /**
+     * The number of retries before the failover provider throws an error.
+     *
      * @private
-     * @type {number} The current active provider index.
-     */
-    private _activeProvider;
-    /**
-     * @private
-     * @type {Array<ProviderProxy<T>>} The list of provider candidates.
-     */
-    private _providers;
-    /**
-     * @private
-     * @type {number} The number of retries before the failover provider throws an error.
+     * @type {FailoverProviderConfig["retries"]}
      */
     private _retries;
     /**
+     * Define errors that the failover provider should retry.
+     *
      * @private
-     * @type {(error: unknown) => boolean} Define errors that the failover provider should retry.
+     * @type {FailoverProviderConfig["shouldRetryOn"]}
      */
     private _shouldRetryOn;
     /**
-     * Add a provider into the list of candidates
-     * @template {T} P
-     * @param {P} provider Provider
-     * @returns {FailoverProvider} The instance of FailoverProvider
+     * The current active provider index.
+     *
+     * @private
+     * @type {number}
      */
-    addProvider: <P extends T>(provider: P) => FailoverProvider<any>;
+    private _activeProvider;
     /**
-     * The FailoverProvider factory
-     * @returns {T} The instance of FailoverProvider
+     * The list of provider candidates.
+     *
+     * @private
+     * @type {Array<ProviderProxy<T>>}
+     */
+    private _providers;
+    /**
+     * Add a provider into the list of candidates
+     *
+     * @param {T} provider Provider
+     * @returns {FailoverProvider<T>} The instance of FailoverProvider
+     */
+    addProvider(provider: T): FailoverProvider<T>;
+    /**
+     * Initialize the failover mechanism based on provider candidates.
+     *
+     * @returns {T} The failover-enabled provider instance
      * @throws {Error} When no providers have been added via addProvider()
      */
-    initialize: () => T;
+    initialize(): T;
     /**
-     * Switch to the next candidate provider by round robin
+     * Switch to the next candidate provider using round-robin selection
+     *
      * @private
      * @returns {ProviderProxy<T>} The new candidate provider
      */
     private _switch;
     /**
      * Store the response time of the latest request
+     *
      * @private
      * @param {ProviderProxy<T>} target - The provider proxy
      * @returns {() => void} The benchmark close function
@@ -67,10 +78,11 @@ export default class FailoverProvider<T extends {}> {
     private _benchmark;
     /**
      * Proxy handler will keep retry until a response or throw the latest error.
+     *
      * @private
      * @param {ProviderProxy<T>} target The current active provider
      * @param {string | symbol} p The method/property name
-     * @param {any} receiver The JS Proxy
+     * @param {unknown} receiver The JS Proxy
      * @param {number} retries The number of retries
      * @returns {(string extends keyof T ? T[keyof T & string] : any) | (symbol extends keyof T ? T[keyof T & symbol] : any) | ((...args: any[]) => any | Promise<any>)}
      */
@@ -84,7 +96,7 @@ export type FailoverProviderConfig = {
     /**
      * - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
      */
-    shouldRetryOn?: (error: unknown) => boolean;
+    shouldRetryOn?: (error: Error) => boolean;
 };
 /**
  * <T>
