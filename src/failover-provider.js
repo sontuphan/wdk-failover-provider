@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { uid } from './utils.js'
+
 /**
  * @typedef {Object} FailoverProviderConfig
  * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
@@ -21,8 +23,9 @@
 /**
  * @template T
  * @typedef {Object} ProviderProxy<T>
- * @property {T} provider - The provider abstraction.
- * @property {number} ms - The last response duration, for future provider ranking.
+ * @property {string} id - The unique identifier for the provider.
+ * @property {T} provider - The underlying provider instance.
+ * @property {number} ms - The last response duration, used for future provider ranking.
  */
 
 /**
@@ -34,7 +37,7 @@ export default class FailoverProvider {
    *
    * @param {FailoverProviderConfig} [config] - The failover factory config.
    */
-  constructor({ retries = 3, shouldRetryOn = (error) => error instanceof Error } = {}) {
+  constructor ({ retries = 3, shouldRetryOn = (error) => error instanceof Error } = {}) {
     /**
      * The number of retries before the failover provider throws an error.
      *
@@ -69,26 +72,26 @@ export default class FailoverProvider {
   }
 
   /**
-   * Add a provider into the list of candidates
+   * Add a provider into the list of candidates.
    *
-   * @param {T} provider The candidate provider
-   * @returns {FailoverProvider<T>} The instance of FailoverProvider
+   * @param {T} provider The candidate provider.
+   * @returns {FailoverProvider<T>} The instance of FailoverProvider.
    */
-  addProvider(provider) {
-    this._providers.push({ provider, ms: 0 })
+  addProvider (provider) {
+    this._providers.push({ id: uid(), provider, ms: 0 })
     return this
   }
 
   /**
    * Initialize the failover mechanism based on provider candidates.
    *
-   * @returns {T} The failover-enabled provider instance
-   * @throws {Error} When no providers have been added via addProvider()
+   * @returns {T} The failover-enabled provider instance.
+   * @throws {Error} When no providers have been added via addProvider().
    */
-  initialize() {
+  initialize () {
     if (!this._providers.length) {
       throw new Error(
-        'Cannot initialize an empty provider. Call `addProvider` before this function.',
+        'Cannot initialize an empty provider. Call `addProvider` before this function.'
       )
     }
 
@@ -97,29 +100,35 @@ export default class FailoverProvider {
     return new Proxy(provider, {
       get: (_, p, receiver) => {
         return this._proxy(this._providers[this._activeProvider], p, receiver)
-      },
+      }
     })
   }
 
   /**
-   * Switch to the next candidate provider using round-robin selection
+   * Advances to the next provider using round-robin selection.
+   * If the active provider has not changed since the failure occurred, it moves to the next provider.
+   * Otherwise, it keeps the current one to avoid race-condition conflicts.
    *
    * @private
-   * @returns {ProviderProxy<T>} The new candidate provider
+   * @param {ProviderProxy<T>} failedProvider - The provider that triggered the switch.
+   * @returns {ProviderProxy<T>} The selected provider.
    */
-  _switch() {
-    this._activeProvider = (this._activeProvider + 1) % this._providers.length
+  _switch (failedProvider) {
+    // Only advance if the active provider is still the failed one
+    if (failedProvider.id === this._providers[this._activeProvider].id) {
+      this._activeProvider = (this._activeProvider + 1) % this._providers.length
+    }
     return this._providers[this._activeProvider]
   }
 
   /**
-   * Store the response time of the latest request
+   * Store the response time of the latest request, used for future provider ranking.
    *
    * @private
-   * @param {ProviderProxy<T>} target - The provider proxy
-   * @returns {() => void} The benchmark close function
+   * @param {ProviderProxy<T>} target The provider proxy.
+   * @returns {() => void} The benchmark close function.
    */
-  _benchmark(target) {
+  _benchmark (target) {
     const start = Date.now()
     return () => {
       target.ms = Math.round(Date.now() - start)
@@ -130,13 +139,13 @@ export default class FailoverProvider {
    * Proxy handler will keep retry until a response or throw the latest error.
    *
    * @private
-   * @param {ProviderProxy<T>} target The current active provider
-   * @param {string | symbol} p The method/property name
-   * @param {unknown} receiver The JS Proxy
-   * @param {number} retries The number of retries
+   * @param {ProviderProxy<T>} target The current active provider.
+   * @param {string | symbol} p The method/property name.
+   * @param {unknown} receiver The JS Proxy.
+   * @param {number} retries The number of retries.
    * @returns {(string extends keyof T ? T[keyof T & string] : any) | (symbol extends keyof T ? T[keyof T & symbol] : any) | ((...args: any[]) => any | Promise<any>)}
    */
-  _proxy(target, p, receiver, retries = this._retries) {
+  _proxy (target, p, receiver, retries = this._retries) {
     // Immediately return if the property is not a function
     const prop = Reflect.get(target.provider, p, receiver)
     if (typeof prop !== 'function') return prop
@@ -146,8 +155,6 @@ export default class FailoverProvider {
      * @returns {any | Promise<any>}
      */
     return (...args) => {
-      const record = this._benchmark(target)
-
       /**
        * @type {any | Promise<any>}
        */
@@ -156,14 +163,11 @@ export default class FailoverProvider {
       // Retry on sync functions
       try {
         re = prop.apply(target.provider, args)
-        if (!re?.then) {
-          record()
-          return re
-        }
+        if (!re?.then) return re
       } catch (er) {
-        record()
         if (retries <= 0 || !this._shouldRetryOn(er)) throw er
-        const property = this._proxy(this._switch(), p, receiver, retries - 1)
+        const provider = this._switch(target)
+        const property = this._proxy(provider, p, receiver, retries - 1)
         if (typeof property === 'function') return property.apply(this, args)
         return property
       }
@@ -174,22 +178,19 @@ export default class FailoverProvider {
           /**
            * @param {any} re
            */
-          (re) => {
-            record()
-            return re
-          },
+          (re) => re
         )
         .catch(
           /**
            * @param {Error} er
            */
           (er) => {
-            record()
             if (retries <= 0 || !this._shouldRetryOn(er)) throw er
-            const property = this._proxy(this._switch(), p, receiver, retries - 1)
+            const provider = this._switch(target)
+            const property = this._proxy(provider, p, receiver, retries - 1)
             if (typeof property === 'function') return property.apply(this, args)
             return property
-          },
+          }
         )
     }
   }

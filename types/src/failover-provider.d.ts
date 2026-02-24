@@ -6,8 +6,9 @@
 /**
  * @template T
  * @typedef {Object} ProviderProxy<T>
- * @property {T} provider - The provider abstraction.
- * @property {number} ms - The last response duration, for future provider ranking.
+ * @property {string} id - The unique identifier for the provider.
+ * @property {T} provider - The underlying provider instance.
+ * @property {number} ms - The last response duration, used for future provider ranking.
  */
 /**
  * @template {{}} T Because limitation of jsdoc, we use `T extends {}` instead of `T extends object`.
@@ -48,42 +49,45 @@ export default class FailoverProvider<T extends {}> {
      */
     private _providers;
     /**
-     * Add a provider into the list of candidates
+     * Add a provider into the list of candidates.
      *
-     * @param {T} provider The candidate provider
-     * @returns {FailoverProvider<T>} The instance of FailoverProvider
+     * @param {T} provider The candidate provider.
+     * @returns {FailoverProvider<T>} The instance of FailoverProvider.
      */
     addProvider(provider: T): FailoverProvider<T>;
     /**
      * Initialize the failover mechanism based on provider candidates.
      *
-     * @returns {T} The failover-enabled provider instance
-     * @throws {Error} When no providers have been added via addProvider()
+     * @returns {T} The failover-enabled provider instance.
+     * @throws {Error} When no providers have been added via addProvider().
      */
     initialize(): T;
     /**
-     * Switch to the next candidate provider using round-robin selection
+     * Advances to the next provider using round-robin selection.
+     * If the active provider has not changed since the failure occurred, it moves to the next provider.
+     * Otherwise, it keeps the current one to avoid race-condition conflicts.
      *
      * @private
-     * @returns {ProviderProxy<T>} The new candidate provider
+     * @param {ProviderProxy<T>} failedProvider - The provider that triggered the switch.
+     * @returns {ProviderProxy<T>} The selected provider.
      */
     private _switch;
     /**
-     * Store the response time of the latest request
+     * Store the response time of the latest request, used for future provider ranking.
      *
      * @private
-     * @param {ProviderProxy<T>} target - The provider proxy
-     * @returns {() => void} The benchmark close function
+     * @param {ProviderProxy<T>} target The provider proxy.
+     * @returns {() => void} The benchmark close function.
      */
     private _benchmark;
     /**
      * Proxy handler will keep retry until a response or throw the latest error.
      *
      * @private
-     * @param {ProviderProxy<T>} target The current active provider
-     * @param {string | symbol} p The method/property name
-     * @param {unknown} receiver The JS Proxy
-     * @param {number} retries The number of retries
+     * @param {ProviderProxy<T>} target The current active provider.
+     * @param {string | symbol} p The method/property name.
+     * @param {unknown} receiver The JS Proxy.
+     * @param {number} retries The number of retries.
      * @returns {(string extends keyof T ? T[keyof T & string] : any) | (symbol extends keyof T ? T[keyof T & symbol] : any) | ((...args: any[]) => any | Promise<any>)}
      */
     private _proxy;
@@ -103,11 +107,15 @@ export type FailoverProviderConfig = {
  */
 export type ProviderProxy<T> = {
     /**
-     * - The provider abstraction.
+     * - The unique identifier for the provider.
+     */
+    id: string;
+    /**
+     * - The underlying provider instance.
      */
     provider: T;
     /**
-     * - The last response duration, for future provider ranking.
+     * - The last response duration, used for future provider ranking.
      */
     ms: number;
 };
