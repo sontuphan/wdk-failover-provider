@@ -26,12 +26,11 @@
   },
   "scripts": {
     "build:types": "tsc",
-    "build:test": "tsup-node tests --clean --silent --format esm --out-dir dist/tests",
     "lint": "standard",
     "lint:fix": "standard --fix",
-    "test": "noba --register tsx ./tests/*.test.ts",
-    "test:node": "npm run build:test && noba ./dist/tests/*.test.js",
-    "test:bare": "npm run build:test && noba-bare ./dist/tests/*.test.js",
+    "test": "npm run test:node",
+    "test:node": "noba ./tests/*.test.js",
+    "test:bare": "noba-bare ./tests/*.test.js",
     "prepublish": "npm run build:types"
   },
   "devDependencies": {
@@ -40,8 +39,6 @@
     "ethers": "^6.16.0",
     "noba": "^1.6.4",
     "standard": "^17.1.2",
-    "tsup": "^8.5.1",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
@@ -50,7 +47,8 @@
   },
   "standard": {
     "ignore": [
-      "bare.js"
+      "bare.js",
+      "tests/**/*.js"
     ]
   }
 }
