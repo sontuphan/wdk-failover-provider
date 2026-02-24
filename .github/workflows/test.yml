@@ -1,4 +1,4 @@
-name: Test
+name: build
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
       - name: Setup Bare ${{ env.BARE_VERSION }}
         run: npm i -g bare@${{ env.BARE_VERSION }}
       - name: Install dependencies
-        run: npm install
+        run: npm clean-install
       - name: Test in Node
         run: npm run test:node
       - name: Test in Bare
