@@ -1,16 +1,4 @@
 /**
- * @typedef {Object} FailoverProviderConfig
- * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
- * @property {(error: Error) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
- */
-/**
- * @template T
- * @typedef {Object} ProviderProxy<T>
- * @property {string} id - The unique identifier for the provider.
- * @property {T} provider - The underlying provider instance.
- * @property {number} ms - The last response duration, used for future provider ranking.
- */
-/**
  * @template {{}} T Because limitation of jsdoc, we use `T extends {}` instead of `T extends object`.
  */
 export default class FailoverProvider<T extends {}> {
@@ -73,14 +61,6 @@ export default class FailoverProvider<T extends {}> {
      */
     private _switch;
     /**
-     * Store the response time of the latest request, used for future provider ranking.
-     *
-     * @private
-     * @param {ProviderProxy<T>} target The provider proxy.
-     * @returns {() => void} The benchmark close function.
-     */
-    private _benchmark;
-    /**
      * Proxy handler will keep retry until a response or throw the latest error.
      *
      * @private
@@ -94,11 +74,11 @@ export default class FailoverProvider<T extends {}> {
 }
 export type FailoverProviderConfig = {
     /**
-     * - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
+     * - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. Default: 3.
      */
     retries?: number;
     /**
-     * - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
+     * - Define errors that the failover provider should retry. Default: `(error: Error) => error instanceof Error`.
      */
     shouldRetryOn?: (error: Error) => boolean;
 };

@@ -11,13 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-import { uid } from './utils.js'
+'use strict'
 
 /**
  * @typedef {Object} FailoverProviderConfig
- * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing.
- * @property {(error: Error) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: unknown) => error instanceof Error`.
+ * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. Default: 3.
+ * @property {(error: Error) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. Default: `(error: Error) => error instanceof Error`.
  */
 
 /**
@@ -27,6 +26,23 @@ import { uid } from './utils.js'
  * @property {T} provider - The underlying provider instance.
  * @property {number} ms - The last response duration, used for future provider ranking.
  */
+
+/**
+ * Generates a simple UID using Math.random().
+ *
+ * @param {number} len - The desired UID length.
+ * @returns {string} A UID string of the specified length.
+ */
+function uid (len = 12) {
+  if (len < 1 || len > 256) {
+    throw new Error('The UID length must be between 1 and 256 characters.')
+  }
+  let id = ''
+  while (id.length < len) {
+    id += Math.round(Math.random() * 10)
+  }
+  return id
+}
 
 /**
  * @template {{}} T Because limitation of jsdoc, we use `T extends {}` instead of `T extends object`.
@@ -119,20 +135,6 @@ export default class FailoverProvider {
       this._activeProvider = (this._activeProvider + 1) % this._providers.length
     }
     return this._providers[this._activeProvider]
-  }
-
-  /**
-   * Store the response time of the latest request, used for future provider ranking.
-   *
-   * @private
-   * @param {ProviderProxy<T>} target The provider proxy.
-   * @returns {() => void} The benchmark close function.
-   */
-  _benchmark (target) {
-    const start = Date.now()
-    return () => {
-      target.ms = Math.round(Date.now() - start)
-    }
   }
 
   /**
