@@ -13,8 +13,6 @@
 // limitations under the License.
 'use strict'
 
-/**
- * @typedef {import('./src/failover-provider.js').FailoverProviderConfig} FailoverProviderConfig
- */
+/** @typedef {import('./src/failover-provider.js').FailoverProviderConfig} FailoverProviderConfig */
 
 export { default } from './src/failover-provider.js'

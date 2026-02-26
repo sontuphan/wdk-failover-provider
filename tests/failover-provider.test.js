@@ -1,5 +1,6 @@
-import { describe } from 'noba'
 import FailoverProvider from '@tetherto/wdk-failover-provider'
+
+import { describe, expect, test } from '@jest/globals'
 
 class Animal {
   /**
@@ -25,6 +26,14 @@ class Animal {
     this.pace = pace
   }
 
+  get NAME() {
+    return this.name
+  }
+
+  get SOUND() {
+    return this.sound
+  }
+
   syncSpeak = () => {
     return this.sound
   }
@@ -35,7 +44,7 @@ class Animal {
   }
 }
 
-describe('Mocked providers', ({ describe }) => {
+describe('FailoverProvider', () => {
   class Cat extends Animal {
     constructor() {
       super('Cat', 'meow')
@@ -53,31 +62,51 @@ describe('Mocked providers', ({ describe }) => {
       super('Cockroach')
     }
 
+    get SOUND() {
+      throw new Error("A cockroach doesn't have sound.")
+    }
+
     speak = async () => {
-      throw new Error("A cockroach doesn't speak, it flies")
+      throw new Error("A cockroach doesn't speak, it flies.")
     }
 
     syncSpeak = () => {
-      throw new Error("A cockroach doesn't speak, it flies")
+      throw new Error("A cockroach doesn't speak, it flies.")
     }
   }
 
-  describe('properties of providers', ({ test }) => {
-    test('should access the property', async ({ expect }) => {
-      /**
-       * @type {FailoverProvider<Animal>}
-       */
-      const animal = new FailoverProvider()
-        .addProvider(new Cat())
-        .addProvider(new Dog())
-        .initialize()
+  test('should access the public property', () => {
+    /**
+     * @type {FailoverProvider<Animal>}
+     */
+    const animal = new FailoverProvider().addProvider(new Cat()).addProvider(new Dog()).initialize()
 
-      expect(animal.name).to.be('Cat')
-    })
+    expect(animal.name).toBe('Cat')
   })
 
-  describe('sync providers', ({ describe, test }) => {
-    test('should accept polymorphism', async ({ expect }) => {
+  test('should access the getter', () => {
+    /**
+     * @type {FailoverProvider<Animal>}
+     */
+    const animal = new FailoverProvider().addProvider(new Cat()).addProvider(new Dog()).initialize()
+
+    expect(animal.NAME).toBe('Cat')
+  })
+
+  test('should retry on the failed getter', () => {
+    /**
+     * @type {FailoverProvider<Animal>}
+     */
+    const animal = new FailoverProvider()
+      .addProvider(new Cockroach())
+      .addProvider(new Dog())
+      .initialize()
+
+    expect(animal.SOUND).toBe('woof')
+  })
+
+  describe('sync providers', () => {
+    test('should accept polymorphism', async () => {
       /**
        * @type {FailoverProvider<Animal>}
        */
@@ -87,10 +116,10 @@ describe('Mocked providers', ({ describe }) => {
         .initialize()
 
       const spoke = animal.syncSpeak()
-      expect(spoke).to.be('meow')
+      expect(spoke).toBe('meow')
     })
 
-    test('should switch provider', async ({ expect }) => {
+    test('should switch provider', async () => {
       /**
        * @type {FailoverProvider<Animal>}
        */
@@ -101,10 +130,10 @@ describe('Mocked providers', ({ describe }) => {
         .initialize()
 
       const spoke = animal.syncSpeak()
-      expect(spoke).to.be('woof')
+      expect(spoke).toBe('woof')
     })
 
-    test('should retry 1 times and fail', async ({ expect }) => {
+    test('should retry 1 times and fail', async () => {
       /**
        * @type {FailoverProvider<Animal>}
        */
@@ -117,11 +146,11 @@ describe('Mocked providers', ({ describe }) => {
 
       expect(() => {
         animal.syncSpeak()
-      }).throws("doesn't speak")
+      }).toThrow("doesn't speak")
     })
 
-    describe('shouldRetryOn config', ({ test }) => {
-      test('should not retry on custom shouldRetryOn', async ({ expect }) => {
+    describe('shouldRetryOn config', () => {
+      test('should not retry on custom shouldRetryOn', async () => {
         /**
          * @type {FailoverProvider<Animal>}
          */
@@ -140,10 +169,10 @@ describe('Mocked providers', ({ describe }) => {
 
         expect(() => {
           animal.syncSpeak()
-        }).throws("doesn't speak")
+        }).toThrow("doesn't speak")
       })
 
-      test('should retry on the default shouldRetryOn', async ({ expect }) => {
+      test('should retry on the default shouldRetryOn', async () => {
         /**
          * @type {FailoverProvider<Animal>}
          */
@@ -154,13 +183,13 @@ describe('Mocked providers', ({ describe }) => {
           .initialize()
 
         const spoken = animal.syncSpeak()
-        expect(spoken).to.be('meow')
+        expect(spoken).toBe('meow')
       })
     })
   })
 
-  describe('async providers', ({ describe, test }) => {
-    test('should accept polymorphism', async ({ expect }) => {
+  describe('async providers', () => {
+    test('should accept polymorphism', async () => {
       /**
        * @type {FailoverProvider<Animal>}
        */
@@ -170,10 +199,10 @@ describe('Mocked providers', ({ describe }) => {
         .initialize()
 
       const spoke = await animal.speak()
-      expect(spoke).to.be('meow')
+      expect(spoke).toBe('meow')
     })
 
-    test('should switch provider', async ({ expect }) => {
+    test('should switch provider', async () => {
       /**
        * @type {FailoverProvider<Animal>}
        */
@@ -184,10 +213,10 @@ describe('Mocked providers', ({ describe }) => {
         .initialize()
 
       const spoke = await animal.speak()
-      expect(spoke).to.be('woof')
+      expect(spoke).toBe('woof')
     })
 
-    test('should retry 1 times and fail', async ({ expect }) => {
+    test('should retry 1 times and fail', async () => {
       /**
        * @type {FailoverProvider<Animal>}
        */
@@ -198,13 +227,13 @@ describe('Mocked providers', ({ describe }) => {
         .addProvider(new Dog())
         .initialize()
 
-      expect(async () => {
+      await expect(async () => {
         await animal.speak()
-      }).rejects("doesn't speak")
+      }).rejects.toThrow("doesn't speak")
     })
 
-    describe('shouldRetryOn config', ({ test }) => {
-      test('should not retry on custom shouldRetryOn', async ({ expect }) => {
+    describe('shouldRetryOn config', () => {
+      test('should not retry on custom shouldRetryOn', async () => {
         /**
          * @type {FailoverProvider<Animal>}
          */
@@ -221,12 +250,12 @@ describe('Mocked providers', ({ describe }) => {
           .addProvider(new Dog())
           .initialize()
 
-        expect(async () => {
+        await expect(async () => {
           await animal.speak()
-        }).rejects("doesn't speak")
+        }).rejects.toThrow("doesn't speak")
       })
 
-      test('should retry on the default shouldRetryOn', async ({ expect }) => {
+      test('should retry on the default shouldRetryOn', async () => {
         /**
          * @type {FailoverProvider<Animal>}
          */
@@ -237,7 +266,7 @@ describe('Mocked providers', ({ describe }) => {
           .initialize()
 
         const spoken = await animal.speak()
-        expect(spoken).to.be('meow')
+        expect(spoken).toBe('meow')
       })
     })
   })

@@ -1,17 +1,12 @@
-import { describe } from 'noba'
 import FailoverProvider from '@tetherto/wdk-failover-provider'
-import { shims } from './config.js'
+
+import { JsonRpcProvider, BrowserProvider, parseEther, Wallet, ZeroAddress } from 'ethers'
+
+import { describe, expect, test } from '@jest/globals'
 
 /**
  * @typedef {import("ethers").AbstractProvider} AbstractProvider
  */
-
-const { JsonRpcProvider, BrowserProvider, parseEther, Wallet, ZeroAddress } = await import(
-  'ethers',
-  {
-    with: shims,
-  }
-)
 
 const window = {
   ethereum: {
@@ -29,43 +24,38 @@ const window = {
 
 const RPC_PROVIDER = 'https://mainnet.infura.io/v3/06da09cda4da458c9aafe71cf464f5e5'
 
-describe('Ethereum providers', ({ describe, test }) => {
-  test('should accept polymorphism', async ({ expect }) => {
+describe('@tetherto/wdk-failover-provider', () => {
+  test('should accept polymorphism', async () => {
     /**
      * @type {FailoverProvider<AbstractProvider>}
      */
     const provider = new FailoverProvider()
       .addProvider(new BrowserProvider(window.ethereum))
-      .addProvider(new JsonRpcProvider(RPC_PROVIDER))
+      .addProvider(new JsonRpcProvider(RPC_PROVIDER, { name: 'mainnet', chainId: 1 }))
       .initialize()
 
     const blockNumber = await provider.getBlockNumber()
 
-    expect(blockNumber > 0).to.be(true)
+    expect(blockNumber > 0).toBe(true)
   })
 
-  test('should retry 1 time and fail', async ({ expect }) => {
+  test('should switch provider', async () => {
     /**
      * @type {FailoverProvider<AbstractProvider>}
      */
     const provider = new FailoverProvider()
       .addProvider(new BrowserProvider(window.ethereum))
       .addProvider(new BrowserProvider(window.ethereum))
-      .addProvider(
-        new JsonRpcProvider(RPC_PROVIDER, {
-          name: 'mainnet',
-          chainId: 1,
-        }),
-      )
+      .addProvider(new JsonRpcProvider(RPC_PROVIDER, { name: 'mainnet', chainId: 1 }))
       .initialize()
 
     const blockNumber = await provider.getBlockNumber()
 
-    expect(blockNumber > 0).to.be(true)
+    expect(blockNumber > 0).toBe(true)
   })
 
-  describe('shouldRetryOn config', ({ test }) => {
-    test('should not retry on insufficient balance error', async ({ expect }) => {
+  describe('shouldRetryOn config', () => {
+    test('should not retry on insufficient balance error', async () => {
       /**
        * @type {FailoverProvider<AbstractProvider>}
        */
@@ -77,49 +67,37 @@ describe('Ethereum providers', ({ describe, test }) => {
           return true
         },
       })
-        .addProvider(
-          new JsonRpcProvider(RPC_PROVIDER, {
-            name: 'mainnet',
-            chainId: 1,
-          }),
-        )
+        .addProvider(new JsonRpcProvider(RPC_PROVIDER, { name: 'mainnet', chainId: 1 }))
         .addProvider(new BrowserProvider(window.ethereum))
         .initialize()
 
       const wallet = Wallet.createRandom(provider)
 
-      expect(async () => {
+      await expect(async () => {
         await wallet.sendTransaction({
           to: ZeroAddress,
           value: parseEther('1'),
         })
-      }).rejects(/insufficient funds/)
+      }).rejects.toThrow(/insufficient funds/)
     })
 
-    test('should be failed on the default shouldRetryOn', async ({ expect }) => {
+    test('should be failed on the default shouldRetryOn', async () => {
       /**
        * @type {FailoverProvider<AbstractProvider>}
        */
-      const provider = new FailoverProvider({
-        retries: 1,
-      })
-        .addProvider(
-          new JsonRpcProvider(RPC_PROVIDER, {
-            name: 'mainnet',
-            chainId: 1,
-          }),
-        )
+      const provider = new FailoverProvider({ retries: 1 })
+        .addProvider(new JsonRpcProvider(RPC_PROVIDER, { name: 'mainnet', chainId: 1 }))
         .addProvider(new BrowserProvider(window.ethereum))
         .initialize()
 
       const wallet = Wallet.createRandom(provider)
 
-      expect(async () => {
+      await expect(async () => {
         await wallet.sendTransaction({
           to: ZeroAddress,
           value: parseEther('1'),
         })
-      }).rejects(/missing revert data/)
+      }).rejects.toThrow(/missing revert data/)
     })
   })
 })

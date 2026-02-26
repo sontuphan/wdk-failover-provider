@@ -148,9 +148,17 @@ export default class FailoverProvider {
    * @returns {(string extends keyof T ? T[keyof T & string] : any) | (symbol extends keyof T ? T[keyof T & symbol] : any) | ((...args: any[]) => any | Promise<any>)}
    */
   _proxy (target, p, receiver, retries = this._retries) {
+    let prop
+
     // Immediately return if the property is not a function
-    const prop = Reflect.get(target.provider, p, receiver)
-    if (typeof prop !== 'function') return prop
+    try {
+      prop = Reflect.get(target.provider, p, receiver)
+      if (typeof prop !== 'function') return prop
+    } catch (er) {
+      if (retries <= 0 || !this._shouldRetryOn(er)) throw er
+      const provider = this._switch(target)
+      return this._proxy(provider, p, receiver, retries - 1)
+    }
 
     /**
      * @param {...any} args

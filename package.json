@@ -33,15 +33,15 @@
     "build:types": "tsc",
     "lint": "standard",
     "lint:fix": "standard --fix",
-    "test": "npm run test:node",
-    "test:coverage": "noba --coverage ./tests/*.test.js",
-    "test:node": "noba ./tests/*.test.js",
-    "test:bare": "noba-bare ./tests/*.test.js"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration",
+    "test:integration:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration --coverage"
   },
   "devDependencies": {
-    "bare-node-runtime": "^1.1.4",
+    "cross-env": "^10.1.0",
     "ethers": "^6.16.0",
-    "noba": "^1.6.4",
+    "jest": "^30.2.0",
     "standard": "^17.1.2",
     "typescript": "^5.9.3"
   },
