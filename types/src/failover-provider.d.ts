@@ -7,21 +7,28 @@ export default class FailoverProvider<T extends {}> {
      *
      * @param {FailoverProviderConfig} [config] - The failover factory config.
      */
-    constructor({ retries, shouldRetryOn }?: FailoverProviderConfig);
+    constructor({ retries, shouldRetryOn, bindProxy }?: FailoverProviderConfig);
     /**
      * The number of retries before the failover provider throws an error.
      *
      * @private
-     * @type {FailoverProviderConfig["retries"]}
+     * @type {NonNullable<FailoverProviderConfig["retries"]>}
      */
     private _retries;
     /**
      * Define errors that the failover provider should retry.
      *
      * @private
-     * @type {FailoverProviderConfig["shouldRetryOn"]}
+     * @type {NonNullable<FailoverProviderConfig["shouldRetryOn"]>}
      */
     private _shouldRetryOn;
+    /**
+     * Whether proxied methods should be bound to the proxy receiver instead of the underlying provider.
+     *
+     * @private
+     * @type {NonNullable<FailoverProviderConfig["bindProxy"]>}
+     */
+    private _bindProxy;
     /**
      * The current active provider index.
      *
@@ -66,6 +73,7 @@ export default class FailoverProvider<T extends {}> {
      * @private
      * @param {T} target The current active provider.
      * @param {Array<string | symbol>} path The path to the target method/property name.
+     * @param {T} receiver The proxy receiver used as `this` when bindProxy is enabled.
      * @param {ProviderProxy<T>} provider The current active proxy.
      * @param {number} retries The number of retries.
      * @returns {any}
@@ -81,6 +89,10 @@ export type FailoverProviderConfig = {
      * - Define errors that the failover provider should retry. By default, it will retry on any errors.
      */
     shouldRetryOn?: (error: Error) => boolean;
+    /**
+     * - Whether proxied methods should be bound to the proxy receiver instead of the underlying provider.
+     */
+    bindProxy?: boolean;
 };
 /**
  * <T>

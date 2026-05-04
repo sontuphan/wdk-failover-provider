@@ -86,6 +86,31 @@ describe('FailoverProvider', () => {
     expect(client.name).toBe('working-client')
   })
 
+  describe('bindProxy config', () => {
+    class ReceiverClient {
+      getReceiver () {
+        return this
+      }
+    }
+
+    test('should bind methods to the underlying provider by default', () => {
+      const provider = new ReceiverClient()
+      const client = new FailoverProvider()
+        .addProvider(provider)
+        .initialize()
+
+      expect(client.getReceiver()).toBe(provider)
+    })
+
+    test('should bind methods to the proxy receiver when enabled', () => {
+      const client = new FailoverProvider({ bindProxy: true })
+        .addProvider(new ReceiverClient())
+        .initialize()
+
+      expect(client.getReceiver()).toBe(client)
+    })
+  })
+
   describe('sync providers', () => {
     test('should switch provider', async () => {
       const client = new FailoverProvider()

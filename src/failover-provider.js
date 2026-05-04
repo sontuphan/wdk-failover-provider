@@ -17,6 +17,7 @@
  * @typedef {Object} FailoverProviderConfig
  * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3.
  * @property {(error: Error) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. By default, it will retry on any errors.
+ * @property {boolean} [bindProxy] - Whether proxied methods should be bound to the proxy receiver instead of the underlying provider.
  */
 
 /**
@@ -53,12 +54,12 @@ export default class FailoverProvider {
    *
    * @param {FailoverProviderConfig} [config] - The failover factory config.
    */
-  constructor ({ retries = 3, shouldRetryOn = (error) => error instanceof Error } = {}) {
+  constructor ({ retries = 3, shouldRetryOn = (error) => error instanceof Error, bindProxy = false } = {}) {
     /**
      * The number of retries before the failover provider throws an error.
      *
      * @private
-     * @type {FailoverProviderConfig["retries"]}
+     * @type {NonNullable<FailoverProviderConfig["retries"]>}
      */
     this._retries = retries
 
@@ -66,9 +67,17 @@ export default class FailoverProvider {
      * Define errors that the failover provider should retry.
      *
      * @private
-     * @type {FailoverProviderConfig["shouldRetryOn"]}
+     * @type {NonNullable<FailoverProviderConfig["shouldRetryOn"]>}
      */
     this._shouldRetryOn = shouldRetryOn
+
+    /**
+     * Whether proxied methods should be bound to the proxy receiver instead of the underlying provider.
+     *
+     * @private
+     * @type {NonNullable<FailoverProviderConfig["bindProxy"]>}
+     */
+    this._bindProxy = bindProxy
 
     /**
      * The current active provider index.
@@ -112,8 +121,8 @@ export default class FailoverProvider {
     }
 
     return new Proxy(this._providers[this._activeProvider].provider, {
-      get: (target, p) => {
-        return this._proxy(target, [p], this._providers[this._activeProvider])
+      get: (target, p, receiver) => {
+        return this._proxy(target, [p], receiver, this._providers[this._activeProvider])
       }
     })
   }
@@ -141,11 +150,12 @@ export default class FailoverProvider {
    * @private
    * @param {T} target The current active provider.
    * @param {Array<string | symbol>} path The path to the target method/property name.
+   * @param {T} receiver The proxy receiver used as `this` when bindProxy is enabled.
    * @param {ProviderProxy<T>} provider The current active proxy.
    * @param {number} retries The number of retries.
    * @returns {any}
    */
-  _proxy (target, path, provider, retries = this._retries) {
+  _proxy (target, path, receiver, provider, retries = this._retries) {
     let prop
 
     const retry = (er, args = []) => {
@@ -156,7 +166,7 @@ export default class FailoverProvider {
       let nextPath = []
       for (const p of path) {
         nextPath = [...nextPath, p]
-        nextProp = this._proxy(nextProp, nextPath, nextProvider, retries - 1)
+        nextProp = this._proxy(nextProp, nextPath, receiver, nextProvider, retries - 1)
       }
 
       if (typeof nextProp !== 'function') return nextProp
@@ -169,7 +179,7 @@ export default class FailoverProvider {
       if (typeof prop === 'object') {
         return new Proxy(prop, {
           get: (nextTarget, p) => {
-            return this._proxy(nextTarget, [...path, p], provider, retries)
+            return this._proxy(nextTarget, [...path, p], receiver, provider, retries)
           }
         })
       }
@@ -183,7 +193,7 @@ export default class FailoverProvider {
 
       // Retry on sync functions
       try {
-        re = prop.apply(target, args)
+        re = prop.apply(this._bindProxy ? receiver : target, args)
         if (!re?.then) return re
       } catch (er) {
         return retry(er, args)

@@ -43,6 +43,7 @@ This package exposes a single default export: the `FailoverProvider` factory.
 - `new FailoverProvider(config?)` — Create a factory.
   - `config.retries` (number, default `3`): The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order.
   - `config.shouldRetryOn` (function, default: `error => error instanceof Error`): predicate to determine whether to retry on a given error.
+  - `config.bindProxy` (boolean, default: `false`): bind proxied methods to the proxy receiver instead of the underlying provider. This is useful when provider methods rely on `this` and should access properties through the failover proxy.
 
 - `instance.addProvider(provider)` — Add a provider candidate. `provider` can be any object (sync or async methods).
 
@@ -51,6 +52,7 @@ This package exposes a single default export: the `FailoverProvider` factory.
 Behavior notes:
 
 - The returned proxied provider forwards non-function properties from the currently active provider.
+- By default, proxied methods are called with `this` bound to the underlying provider. Set `bindProxy: true` to bind `this` to the proxy receiver instead.
 - When a method throws exceptions and `shouldRetryOn(error)` returns `true`, the proxy switches to the next provider (round-robin) and retries until retries are exhausted.
 
 ## 📜 License
