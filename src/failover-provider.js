@@ -178,8 +178,8 @@ export default class FailoverProvider {
       prop = Reflect.get(target, path.at(-1))
       if (typeof prop === 'object') {
         return new Proxy(prop, {
-          get: (nextTarget, p) => {
-            return this._proxy(nextTarget, [...path, p], receiver, provider, retries)
+          get: (nextTarget, p, nextReceiver) => {
+            return this._proxy(nextTarget, [...path, p], nextReceiver, provider, retries)
           }
         })
       }
