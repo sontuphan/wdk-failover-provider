@@ -16,7 +16,7 @@
 /**
  * @typedef {Object} FailoverProviderConfig
  * @property {number} [retries] - The number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3.
- * @property {(error: Error) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. By default, it will retry on any errors.
+ * @property {(error: unknown) => boolean} [shouldRetryOn] - Define errors that the failover provider should retry. By default, it will retry on any errors.
  */
 
 /**
@@ -58,7 +58,7 @@ export default class FailoverProvider {
      * The number of retries before the failover provider throws an error.
      *
      * @private
-     * @type {FailoverProviderConfig["retries"]}
+     * @type {NonNullable<FailoverProviderConfig["retries"]>}
      */
     this._retries = retries
 
@@ -66,7 +66,7 @@ export default class FailoverProvider {
      * Define errors that the failover provider should retry.
      *
      * @private
-     * @type {FailoverProviderConfig["shouldRetryOn"]}
+     * @type {NonNullable<FailoverProviderConfig["shouldRetryOn"]>}
      */
     this._shouldRetryOn = shouldRetryOn
 
@@ -111,11 +111,9 @@ export default class FailoverProvider {
       )
     }
 
-    const [{ provider }] = this._providers
-
-    return new Proxy(provider, {
-      get: (_, p, receiver) => {
-        return this._proxy(this._providers[this._activeProvider], p, receiver)
+    return new Proxy({}, {
+      get: (_, p) => {
+        return this._proxy(this._providers[this._activeProvider], p)
       }
     })
   }
@@ -143,21 +141,20 @@ export default class FailoverProvider {
    * @private
    * @param {ProviderProxy<T>} target The current active provider.
    * @param {string | symbol} p The method/property name.
-   * @param {unknown} receiver The JS Proxy.
    * @param {number} retries The number of retries.
    * @returns {any}
    */
-  _proxy (target, p, receiver, retries = this._retries) {
+  _proxy (target, p, retries = this._retries) {
     let prop
 
     // Immediately return if the property is not a function
     try {
-      prop = Reflect.get(target.provider, p, receiver)
+      prop = Reflect.get(target.provider, p)
       if (typeof prop !== 'function') return prop
     } catch (er) {
       if (retries <= 0 || !this._shouldRetryOn(er)) throw er
       const provider = this._switch(target)
-      return this._proxy(provider, p, receiver, retries - 1)
+      return this._proxy(provider, p, retries - 1)
     }
 
     return (...args) => {
@@ -166,11 +163,11 @@ export default class FailoverProvider {
       // Retry on sync functions
       try {
         re = prop.apply(target.provider, args)
-        if (!re?.then) return re
+        if (typeof re?.then !== 'function') return re
       } catch (er) {
         if (retries <= 0 || !this._shouldRetryOn(er)) throw er
         const provider = this._switch(target)
-        const property = this._proxy(provider, p, receiver, retries - 1)
+        const property = this._proxy(provider, p, retries - 1)
         if (typeof property === 'function') return property(...args)
         return property
       }
@@ -181,7 +178,7 @@ export default class FailoverProvider {
         .catch((er) => {
           if (retries <= 0 || !this._shouldRetryOn(er)) throw er
           const provider = this._switch(target)
-          const property = this._proxy(provider, p, receiver, retries - 1)
+          const property = this._proxy(provider, p, retries - 1)
           if (typeof property === 'function') return property(...args)
           return property
         })
