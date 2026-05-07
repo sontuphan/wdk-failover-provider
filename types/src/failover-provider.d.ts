@@ -12,14 +12,14 @@ export default class FailoverProvider<T extends {}> {
      * The number of retries before the failover provider throws an error.
      *
      * @private
-     * @type {FailoverProviderConfig["retries"]}
+     * @type {NonNullable<FailoverProviderConfig["retries"]>}
      */
     private _retries;
     /**
      * Define errors that the failover provider should retry.
      *
      * @private
-     * @type {FailoverProviderConfig["shouldRetryOn"]}
+     * @type {NonNullable<FailoverProviderConfig["shouldRetryOn"]>}
      */
     private _shouldRetryOn;
     /**
@@ -66,7 +66,6 @@ export default class FailoverProvider<T extends {}> {
      * @private
      * @param {ProviderProxy<T>} target The current active provider.
      * @param {string | symbol} p The method/property name.
-     * @param {unknown} receiver The JS Proxy.
      * @param {number} retries The number of retries.
      * @returns {any}
      */
@@ -80,7 +79,7 @@ export type FailoverProviderConfig = {
     /**
      * - Define errors that the failover provider should retry. By default, it will retry on any errors.
      */
-    shouldRetryOn?: (error: Error) => boolean;
+    shouldRetryOn?: (error: unknown) => boolean;
 };
 /**
  * <T>
