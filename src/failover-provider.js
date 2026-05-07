@@ -152,15 +152,22 @@ export default class FailoverProvider {
       prop = Reflect.get(target.provider, p)
       if (!prop) return prop
       if (typeof prop === 'object') {
-        const nestedFailoverProvider = new FailoverProvider({ retries, shouldRetryOn: this._shouldRetryOn})
-        for (const { provider } of this._providers) {
-          const nestedObject = Reflect.get(provider, p)
-          nestedFailoverProvider.addProvider(nestedObject)
+        const nestedFailoverProvider = new FailoverProvider({ retries, shouldRetryOn: this._shouldRetryOn }).addProvider(prop)
+
+        for (const { id, provider } of this._providers) {
+          if (target.id !== id) {
+            try {
+              const nestedObject = Reflect.get(provider, p)
+              nestedFailoverProvider.addProvider(nestedObject)
+            } catch {
+              // Skip failed nested objects
+            }
+          }
         }
+
         return nestedFailoverProvider.initialize()
       }
       if (typeof prop !== 'function') return prop
-
     } catch (er) {
       if (retries <= 0 || !this._shouldRetryOn(er)) throw er
       const provider = this._switch(target)
@@ -178,18 +185,43 @@ export default class FailoverProvider {
         return property
       }
 
+      const resolve = (re) => {
+        if (!re) return re
+
+        if (typeof re === 'object') {
+          const nestedFailoverProvider = new FailoverProvider({ retries, shouldRetryOn: this._shouldRetryOn }).addProvider(re)
+
+          for (const { id, provider } of this._providers) {
+            if (target.id !== id) {
+              try {
+                const nestedProp = Reflect.get(provider, p)
+                const nestedObject = nestedProp.apply(provider, args)
+                nestedFailoverProvider.addProvider(nestedObject)
+              } catch {
+                // Skip failed nested objects
+              }
+            }
+          }
+
+          return nestedFailoverProvider.initialize()
+        }
+
+        return re
+      }
+
       // Retry on sync functions
       try {
         re = prop.apply(target.provider, args)
-        if (typeof re?.then !== 'function') return re
+
+        if (typeof re?.then !== 'function') {
+          return resolve(re)
+        }
       } catch (er) {
         return retry(er)
       }
 
       // Retry on async functions
-      return re
-        .then((re) => re)
-        .catch((er) => retry(er))
+      return re.then(resolve).catch(retry)
     }
   }
 }
