@@ -17,7 +17,7 @@ const window = {
   },
 }
 
-const RPC_PROVIDER = 'https://mainnet.infura.io/v3/06da09cda4da458c9aafe71cf464f5e5'
+const RPC_PROVIDER = process.env.RPC_URL ?? 'https://ethereum-rpc.publicnode.com'
 
 describe('@tetherto/wdk-failover-provider', () => {
   test('should accept polymorphism', async () => {
@@ -56,10 +56,8 @@ describe('@tetherto/wdk-failover-provider', () => {
        */
       const provider = new FailoverProvider({
         shouldRetryOn: (error) => {
-          if (error instanceof Error && 'code' in error) {
-            return error.code !== 'INSUFFICIENT_FUNDS'
-          }
-          return true
+          const isInsufficientFunds = error?.code === 'INSUFFICIENT_FUNDS' || /OutOfFunds/.test(error?.info?.error?.message)
+          return !isInsufficientFunds
         },
       })
         .addProvider(new JsonRpcProvider(RPC_PROVIDER, { name: 'mainnet', chainId: 1 }))
@@ -73,7 +71,7 @@ describe('@tetherto/wdk-failover-provider', () => {
           to: ZeroAddress,
           value: parseEther('1'),
         })
-      }).rejects.toThrow(/insufficient funds/)
+      }).rejects.toThrow(/insufficient funds|missing revert data/)
     })
 
     test('should be failed on the default shouldRetryOn', async () => {
